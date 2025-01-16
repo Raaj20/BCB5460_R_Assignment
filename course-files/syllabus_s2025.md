@@ -34,7 +34,7 @@ This course will be held in person unless otherwise specified.
 
 A detailed schedule the course can be found here:
 
-[https://docs.google.com/spreadsheets/d/1E0ioNiW0NR3kR_AxA_0lRhMKs8QXlx4L63vpXVt2s4U/edit?usp=sharing](https://docs.google.com/spreadsheets/d/1E0ioNiW0NR3kR_AxA_0lRhMKs8QXlx4L63vpXVt2s4U/edit?usp=sharing)
+[https://docs.google.com/spreadsheets/d/1uTrA6o7Xk-6TK-KvEIHFRm6SYvOr5pon3GSvmNsvOUw/edit?usp=sharing](https://docs.google.com/spreadsheets/d/1uTrA6o7Xk-6TK-KvEIHFRm6SYvOr5pon3GSvmNsvOUw/edit?usp=sharing)
 
 Additionally, we will provide links to slides and other information on the course website schedule page:
 
