@@ -1,0 +1,337 @@
+---
+title: "Untitled"
+author: "Viraaj"
+date: "2025-03-11"
+output: html_document
+---
+
+```{r}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load required libraries
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(reshape2)
+library(naniar)
+library(ggplot2)
+library(readr)
+```
+
+# Provide access to data files:
+
+## fang_et_al_genotypes
+
+```{r}
+fang <- read.table("https://raw.githubusercontent.com/EEOB-BioData/BCB546_Spring2025/refs/heads/main/assignments/UNIX_Assignment/fang_et_al_genotypes.txt", header=T, sep="\t")
+View(fang)
+```
+
+##snp_position
+
+```{r}
+snp <- read.table("https://raw.githubusercontent.com/EEOB-BioData/BCB546_Spring2025/refs/heads/main/assignments/UNIX_Assignment/snp_position.txt", header=TRUE, sep="\t")
+View(snp)
+```
+
+# Data Inspection
+
+## fang
+
+```{r}
+dim(fang)
+### The data file "fang" has 2782 rows and 986 columns
+```
+
+```{r}
+str(fang)
+### The data file "fang" is a 'data.frame' with 2782 obs. of  986 variables each.
+```
+
+```{r}
+sapply(fang, class)
+### Every column in the data file "fang" is a "character".
+```
+
+```{r}
+colnames(fang)[1:5]
+### The first five columns are named:
+### [1] "Sample_ID" "JG_OTU"    "Group"     "abph1.20"  "abph1.22" 
+```
+
+## snp
+
+```{r}
+dim(snp)
+### The data file "snp" has 983 rows and 15 columns.
+```
+
+```{r}
+str(snp)
+### The data file "snp" is a 'data.frame' with  983 obs. of  15 variables each.
+```
+
+```{r}
+sapply(snp, class)
+### The data file "snp" has a mixture of both "characters" and "integers".
+```
+
+```{r}
+colnames(snp)[1:5]
+### The first five column names in the "snp" data file are:
+### [1] "SNP_ID"        "cdv_marker_id" "Chromosome"    "Position"      "alt_pos" 
+```
+
+# Data Processing
+
+## Extract only Maize and Teosinte data
+
+```{r}
+### Maize
+Extracted_Maize <- filter(fang, Group %in% c("ZMMIL","ZMMLR","ZMMMR"))
+view(Extracted_Maize)
+
+### Teosinte
+Extracted_Teosinte <- filter(fang, Group %in% c("ZMPBA","ZMPIL","ZMPJA"))
+view(Extracted_Teosinte)
+```
+
+## Change column names to match
+
+```{r}
+### Change "Sample_ID" column to "SNP_ID" in order to match with the SNP data file in order for easier merging.
+colnames(Extracted_Maize)[1] <- "SNP_ID"
+colnames(Extracted_Teosinte)[1] <- "SNP_ID"
+```
+
+## Select only required columns
+
+```{r}
+Filtered_SNP <- snp[ , c("SNP_ID", "Chromosome", "Position")] 
+
+Extracted_Maize <- Extracted_Maize[,!names(Extracted_Maize) %in% c("JG_OTU", "Group")]
+
+Extracted_Teosinte <- Extracted_Teosinte[,!names(Extracted_Teosinte) %in% c("JG_OTU", "Group")]
+```
+
+## Transpose Maize and Teosinte data file
+
+```{r}
+Transposed_Maize <- t(Extracted_Maize)
+Transposed_Teosinte <- t(Extracted_Teosinte)
+
+### Update the column titles to the actual SNP IDs for easier merging.
+colnames(Transposed_Maize) <- Transposed_Maize[1, ] 
+colnames(Transposed_Teosinte) <- Transposed_Teosinte[1, ] 
+```
+
+## Merge Transposed_Maize,and \_Teosinte data file with the Filtered_SNP data file
+
+```{r}
+Merged_SNP_Maize <- merge(Filtered_SNP, Transposed_Maize, by.x = "SNP_ID", by.y = "row.names")
+Merged_SNP_Teosinte <- merge(Filtered_SNP, Transposed_Teosinte, by.x = "SNP_ID", by.y = "row.names")
+```
+
+## Preprocessing to check if variables are read as the right data type
+
+```{r}
+sapply(Merged_SNP_Maize, mode)
+
+### Here, the "Position" variable is currently read as a character. So we have to transform those values to numeric and eliminate any rows with the "NA" pop-ups to avoid further downstream problems.
+
+Merged_SNP_Maize$Position <- as.numeric(as.character(Merged_SNP_Maize$Position))
+Merged_SNP_Maize <- Merged_SNP_Maize[!is.na(Merged_SNP_Maize$Position), ]
+
+sapply(Merged_SNP_Maize, mode)
+```
+
+## Maize - 10 files for each chromosome with increasing position and missing values replaced by "?"
+
+```{r}
+### Use the sapply to create a function "i" and repeat it for each chromosome. This section first sorts the code and then arranges the postions within in ascending order. Later it replaces missing data with ? and finally creates a new file that's saved in the working directory. The file can later be opened for review. 
+dir.create('./increasing_maize', showWarnings = FALSE) 
+
+sapply(1:10, function(i) {
+  Merged_SNP_Maize <- filter(Merged_SNP_Maize, Chromosome == i) 
+  Merged_SNP_Maize_inc <- Merged_SNP_Maize[order(as.numeric(as.character(Merged_SNP_Maize$Position))), ] 
+  
+  Merged_SNP_Maize_inc[Merged_SNP_Maize_inc == "?/?"] <- "?" 
+  
+  Merged_SNP_Maize_inc <- na.omit(Merged_SNP_Maize_inc) 
+  
+  write.table(Merged_SNP_Maize_inc, 
+              file = paste0("./increasing_maize/increasing_maize", i), 
+              quote = FALSE, 
+              sep = "\t")
+})
+data <- read_tsv("./increasing_maize/increasing_maize1")
+View(data)
+```
+
+## Maize - 10 files for each chromosome with decreasing position and missing values replaced by "-"
+
+```{r}
+### Similar to the previous chunk of code except it replaces "?/?" with "-" and also arranges the position in a decreasing order. Then its 
+dir.create('./decreasing_maize', showWarnings = FALSE)  
+
+sapply(1:10, function(i) {
+  Merged_SNP_Maize <- filter(Merged_SNP_Maize, Chromosome == i)  
+  Merged_SNP_Maize_dec <- Merged_SNP_Maize[order(-as.numeric(as.character(Merged_SNP_Maize$Position))), ]  
+  
+  Merged_SNP_Maize_dec[Merged_SNP_Maize_dec == "?/?"] <- "-"
+  
+  Merged_SNP_Maize_dec <- na.omit(Merged_SNP_Maize_dec)  
+  write.table(Merged_SNP_Maize_dec, 
+              file = paste0("./decreasing_maize/decreasing_maize", i), 
+              quote = FALSE, 
+              sep = "\t")
+})
+
+data <- read_tsv("./decreasing_maize/decreasing_maize1")
+View(data)
+```
+
+## Teosinte - 10 files for each chromosome with increasing position and missing values replaced by "?"
+
+```{r}
+dir.create('./increasing_teosinte', showWarnings = FALSE) 
+
+sapply(1:10, function(i) {
+  Merged_SNP_Teosinte <- filter(Merged_SNP_Teosinte, Chromosome == i)  
+  Merged_SNP_Teosinte_inc <- Merged_SNP_Teosinte[order(as.numeric(as.character(Merged_SNP_Teosinte$Position))), ]  
+  
+  Merged_SNP_Teosinte_inc[Merged_SNP_Teosinte_inc == "?/?"] <- "?" 
+  
+  Merged_SNP_Teosinte_inc <- na.omit(Merged_SNP_Teosinte_inc)  
+  
+  write.table(Merged_SNP_Teosinte_inc, 
+              file = paste0("./increasing_teosinte/increasing_teosinte", i), 
+              quote = FALSE, 
+              sep = "\t")
+})
+data <- read_tsv("./increasing_teosinte/increasing_teosinte1")
+View(data)
+```
+
+## Teosinte - 10 files for each chromosome with decreasing position and missing values replaced by "-"
+
+```{r}
+dir.create('./decreasing_teosinte', showWarnings = FALSE)  
+
+sapply(1:10, function(i) {
+  Merged_SNP_Teosinte <- filter(Merged_SNP_Teosinte, Chromosome == i)  
+  Merged_SNP_Teosinte_dec <- Merged_SNP_Teosinte[order(-as.numeric(as.character(Merged_SNP_Teosinte$Position))), ]  
+  
+  Merged_SNP_Teosinte_dec[Merged_SNP_Teosinte_dec == "?/?"] <- "-" 
+  
+  Merged_SNP_Teosinte_dec <- na.omit(Merged_SNP_Teosinte_dec)  
+  write.table(Merged_SNP_Teosinte_dec, 
+              file = paste0("./decreasing_teosinte/decreasing_teosinte", i), 
+              quote = FALSE, 
+              sep = "\t")
+})
+
+data <- read_tsv("./decreasing_teosinte/decreasing_teosinte1")
+View(data)
+```
+
+# Data Visualization
+
+## Spread of SNPs in all chromosomes (Maize & Teosinte Common)
+
+```{r}
+Subsetted_Teosinte_Maize <- filter(fang, Group %in% c("ZMMIL","ZMMLR","ZMMMR","ZMPBA","ZMPIL","ZMPJA"))
+Subsetted_Teosinte_Maize <- Subsetted_Teosinte_Maize[,!names(Subsetted_Teosinte_Maize) %in% "JG_OTU"]
+colnames(Subsetted_Teosinte_Maize) [1] <- "SNP_ID"
+Subsetted_Teosinte_Maize_T <- t(Subsetted_Teosinte_Maize)
+SNP_Teosinte_Maize <- merge(Filtered_SNP, Subsetted_Teosinte_Maize_T, by.x = "SNP_ID", by.y = "row.names", all = TRUE)
+SNP_Teosinte_Maize <- SNP_Teosinte_Maize %>% pivot_longer(starts_with("V"),
+                                                names_to='geno',
+                                               values_to='SNP')
+### plot
+ggplot (data = SNP_Teosinte_Maize) + geom_bar(mapping = aes(x = as.factor(as.double(Chromosome)), fill = Chromosome)) +xlab(label = "Chromosome") + ylab(label = "SNPs") + ggtitle("Single Nucleotide Polymorphism per Chromosome") + scale_x_discrete(limit = factor(1:10))
+```
+
+## Spread of SNPs in all chromosomes (Maize vs Teosinte)
+
+```{r}
+fang_new <- fang[,!names(fang) %in% "JG_OTU"]
+
+fang_new <- fang_new %>% pivot_longer(!c(Sample_ID, Group), names_to="SNP_ID", values_to= "allele")
+Subsetted_Teosinte_Maize_2 <- filter(fang_new, Group %in% c("ZMMIL","ZMMLR","ZMMMR","ZMPBA","ZMPIL","ZMPJA"))
+SNP_Teosinte_Maize_2 <- merge(Subsetted_Teo_Maize_2, Filtered_SNP, by="SNP_ID")
+SNP_Teosinte_Maize_Groups <- SNP_Teosinte_Maize_2 %>% 
+  mutate(
+    type = if_else(
+      condition = Group %in% c("ZMMIL","ZMMLR","ZMMMR"), 
+      true      = "Maize", 
+      false     = "Teosinte"
+    ), 
+  )
+
+### Graph to compare proportion of SNPs in Maize vs Teosinte
+by_group_plot <- ggplot (data = SNP_Teosinte_Maize_Groups) + geom_bar(mapping = aes(x = Chromosome, fill = type)) + 
+  xlab(label = "Chromosome") + ylab(label = "SNPs") +
+  ggtitle("Single Nucleotide Polymorphism per Sample") 
+by_group_plot
+
+```
+
+## Homozygous vs Heterozygous
+
+```{r}
+SNP_Homo_Hetero <- merge(Subsetted_Teosinte_Maize_2, Filtered_SNP, by="SNP_ID")
+SNP_Homo_Hetero <- SNP_Homo_Hetero %>% replace_with_na(replace = list(allele = "?/?"))
+SNP_Homo_Hetero <- SNP_Homo_Hetero %>% 
+  mutate(
+    Homozygosity = if_else(
+      condition = allele %in% c("A/A","T/T","G/G","C/C"), 
+      true      = "Homozygous", 
+      false     = "Heterozygous"
+    ), 
+  )
+SNP_Homo_Hetero<- SNP_Homo_Hetero %>% 
+  mutate(
+    type = if_else(
+      condition = Group %in% c("ZMMIL","ZMMLR","ZMMMR"), 
+      true      = "Maize", 
+      false     = "Teosinte"
+    ), 
+  )
+SNP_Homo_Hetero_NA_omit <- na.omit(SNP_Homo_Hetero) 
+### Graphs for Homozygous vs Heterozygous represented in two different fashion
+ggplot(data = SNP_Homo_Hetero_NA_omit) + 
+  geom_bar(mapping = aes(x = Group, fill = Homozygosity)) + 
+  xlab(label = "Homozygous vs. Heterozygous") + ylab(label = "Count") +
+  ggtitle("Homozygous vs. Heterozygous by Group") 
+
+ggplot(data = SNP_Homo_Hetero_NA_omit) + 
+  geom_bar(mapping = aes(x = type, fill = Homozygosity)) + 
+  xlab(label = "Homozygous vs. Heterozygous") + ylab(label = "Count") +
+  ggtitle("Homozygous vs. Heterozygous by Sample")
+```
+
+## Creative Component (Pie Chart Distribution)
+
+```{r}
+Group_Counts <- SNP_Teosinte_Maize_Groups %>%
+  group_by(Group, type) %>%
+  summarise(Count = n(), .groups = 'drop')
+
+Group_Counts <- group_counts %>%
+  group_by(type) %>%
+  mutate(
+    Proportion = Count / sum(Count)
+    )
+
+ggplot(group_counts, aes(x = "", y = Proportion, fill = Group)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  facet_wrap(~type) +
+  ggtitle("Groupwise Proportion of SNPs in Maize vs Teosinte") 
+```
