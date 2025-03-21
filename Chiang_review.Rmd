@@ -1,6 +1,8 @@
 ---
 title: "Chiang_review"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 date: "2025-03-21"
 ---
 
@@ -10,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Peer Review of `Viraaj_R_AssignmentUpdated.Rmd` by Lillian Chiang
 
-Hi Vishnu! Overall, I think you did a great job on this assignment. For this review, I will discuss each section of the assignment (data inspection, data processing, and data visualization) and provide feedback.
+Hi Viraaj! Overall, I think you did a great job on this assignment. For this review, I will discuss each section of the assignment (data inspection, data processing, and data visualization) and provide feedback.
 
 ### Data Inspection
 
