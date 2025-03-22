@@ -1,0 +1,27 @@
+---
+title: "Dey_Review.Rmd"
+author: "Sristi Dey"
+date: "2025-03-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Hi Viraaj, 
+
+I found an error in loading library(reshape2) and library(naniar) while running your markdown file, "Error in library(reshape2) : there is no package called ‘reshape2’". 
+I removed them to be able to run your markdown file further, got an error in line 292 "could not find function (replace_with_na)"
+
+Your Single Nucleotide Polymorphism per Chromosome plot looks good, however, it does not have the information for 'multiple' and 'unknown'
+
+#Plot Single Nucleotide Polymorphism per Sample
+For this plot it would be better to read the chromosomes in order in the x-axis, below code can help you order them from 1-10, then the non-numeric chromosomes
+```{r sort  using factor}
+your merged maize data$Chromosome <- factor(your merged maize data$Chromosome, 
+    levels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown"))
+```
+
+Due to the error in line 292 i could not generate your missing information plots. Overall, everything else look good. 
+
